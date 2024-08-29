@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360 Degree View</title>
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body{
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .card{
+            height: 450px;
+            width: 550px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button{
+            padding: 10px;
+            cursor: pointer;
+            background-color: rgb(2, 124, 255);
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            border-radius: 4px;
+            border: none;
+            transition: transform .3s;
+        }
+        button:hover{
+            transform: translateY(-3px);
+            box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.5);
+        }
+        button:active{
+            background-color: rgb(0, 0, 0);
+            transform: translateY(0px);
+        }
+        .top, .bottom{
+            width: 550px;
+            height: 40px;
+        }
+        .center{
+            width: 550px;
+            height: 350px;
+            overflow: hidden;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .center img{
+            width: 300px;
+            height: 300px;
+        }
+        .bottom{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+    <style>
+        #viewer {
+            /* position: relative; */
+            cursor: grab;
+            width: 600px !important;
+            height: 600px !important;
+            cursor: default;
+            position: absolute;
+            background: rgb(255, 255, 255);
+            border: 10px solid rgb(181, 181, 181);
+            border-radius: 8px;
+            display: none;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: #666;
+        }
+        #viewer img {
+            display: none;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="top">
+            <button id="btn">View 360 Degree</button>
+        </div>
+        <div class="center">
+            <img src="images/Ampact_360_web_06.png" alt="Model Image">
+        </div>
+        <div class="bottom">
+            <p>Drag to rotate, double-click to spin 360°.</p>
+        </div>
+    </div>
+
+    <div id="viewer">
+        <span style="float: right;" id="close">X</span>
+        <span id="loading">Loading...</span>
+    </div>
+
+    <script>
+        let btn = document.getElementById('btn');
+        let close = document.getElementById("close");
+        var viewModel = document.getElementById("viewer");
+
+        const viewer = document.getElementById('viewer');
+        const loading = document.getElementById('loading');
+        const totalImages = 36;
+        let currentImage = 0;
+        let dragging = false;
+        let startX;
+        let autoRotateInterval;
+        const autoRotateSpeed = 50; 
+
+        // Load images from the local folder
+        for (let i = 1; i <= totalImages; i++) {
+            const img = new Image();
+            img.src = `images/Ampact_360_web_${String(i).padStart(2, '0')}.png`; 
+            img.onload = () => {
+                if (i === 1) {
+                    img.style.display = 'block';
+                    loading.style.display = 'none';
+                    
+                    viewer.style.width = `${img.width}px`;
+                    viewer.style.height = `${img.height}px`;
+                }
+            };
+            viewer.appendChild(img);
+        }
+
+        btn.addEventListener("click", function(){
+            currentImage = 0;  // Reset to the first image
+            updateImage();     // Ensure the first image is displayed
+            viewModel.style.display = "block";
+            startAutoRotate(); // Start auto-rotating when the viewer is displayed
+        });
+
+        close.addEventListener("click", function(){
+            viewModel.style.display = "none";
+            clearInterval(autoRotateInterval); // Stop rotation when the viewer is closed
+        });
+
+        function startAutoRotate() {
+            clearInterval(autoRotateInterval); // Clear any previous interval
+            const startImage = currentImage; // Remember where to stop
+            autoRotateInterval = setInterval(() => {
+                currentImage = (currentImage + 1) % totalImages;
+                updateImage();
+                if (currentImage === startImage) {
+                    clearInterval(autoRotateInterval); // Stop rotation after a full cycle
+                }
+            }, autoRotateSpeed);
+        }
+
+        // Handle double-click to auto-rotate 360 degrees once
+        viewer.addEventListener('dblclick', () => {
+            if (dragging) return; // Do not auto-rotate if dragging
+            startAutoRotate();
+        });
+
+        // mousedown to start manual dragging rotation
+        viewer.addEventListener('mousedown', (e) => {
+            clearInterval(autoRotateInterval); // Stop any previous auto-rotation
+            dragging = true;
+            startX = e.pageX;
+            viewer.style.cursor = 'grabbing';
+        });
+
+        // mousemove to rotate image based on dragging direction
+        const sensitivity = 5;
+
+        viewer.addEventListener('mousemove', (e) => {
+            if (dragging) {
+                const moveX = e.pageX - startX;
+
+                // Adjust moveX by the sensitivity factor
+                if (Math.abs(moveX) > sensitivity) {
+                    startX = e.pageX;
+
+                    if (moveX < 0) { 
+                        // Move to the next image when dragging left
+                        currentImage = (currentImage + 1) % totalImages;
+                    } else if (moveX > 0) { 
+                        // Move to the previous image when dragging right
+                        currentImage = (currentImage - 1 + totalImages) % totalImages;
+                    }
+
+                    updateImage();
+                }
+            }
+        });
+
+        // mouseup to stop dragging rotation
+        document.addEventListener('mouseup', () => {
+            if (dragging) {
+                dragging = false;
+                viewer.style.cursor = 'grab';
+            }
+        });
+
+        // Prevent image drag
+        viewer.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+        });
+
+        // Optional: Change cursor style when mouse enters/leaves the viewer
+        viewer.addEventListener('mouseenter', () => {
+            viewer.style.cursor = 'grab';
+        });
+
+        viewer.addEventListener('mouseleave', () => {
+            viewer.style.cursor = 'default';
+            if (dragging) {
+                dragging = false;
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // update the image displayed
+        function updateImage() {
+            const allImages = viewer.querySelectorAll('img');
+            allImages.forEach((img, index) => {
+                img.style.display = index === currentImage ? 'block' : 'none';
+            });
+        }
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360 Degree Product Viewer</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        #viewer {
+            position: relative;
+            cursor: grab;
+        }
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            color: #666;
+        }
+        #viewer img {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="viewer">
+        <span id="loading">Loading...</span>
+    </div>
+
+    <script>
+        const viewer = document.getElementById('viewer');
+        const loading = document.getElementById('loading');
+        const totalImages = 36;
+        let currentImage = 0;
+        let dragging = false;
+        let startX;
+        let autoRotateInterval;
+        const autoRotateSpeed = 50; 
+
+        // Load images from the local folder
+        for (let i = 1; i <= totalImages; i++) {
+            const img = new Image();
+            img.src = `images/Ampact_360_web_${String(i).padStart(2, '0')}.png`; 
+            img.onload = () => {
+                if (i === 1) {
+                    img.style.display = 'block';
+                    loading.style.display = 'none';
+                    
+                    viewer.style.width = `${img.width}px`;
+                    viewer.style.height = `${img.height}px`;
+                }
+            };
+            viewer.appendChild(img);
+        }
+
+        // Rotate 360 degrees automatically on page load
+        window.addEventListener('load', () => {
+            const startImage = currentImage;
+            autoRotateInterval = setInterval(() => {
+                currentImage = (currentImage + 1) % totalImages;
+                updateImage();
+                if (currentImage === startImage) {
+                    clearInterval(autoRotateInterval); // Stop rotation after a full cycle
+                }
+            }, autoRotateSpeed);
+        });
+
+        // Handle double-click to auto-rotate 360 degrees once
+        viewer.addEventListener('dblclick', () => {
+            if (dragging) return; // Do not auto-rotate if dragging
+            clearInterval(autoRotateInterval); // Stop any previous auto-rotation
+            const startImage = currentImage; // Remember where to stop
+            autoRotateInterval = setInterval(() => {
+                currentImage = (currentImage + 1) % totalImages;
+                updateImage();
+                if (currentImage === startImage) {
+                    clearInterval(autoRotateInterval); 
+                }
+            }, autoRotateSpeed);
+        });
+
+        // mousedown to start manual dragging rotation
+        viewer.addEventListener('mousedown', (e) => {
+            clearInterval(autoRotateInterval); // Stop any previous auto-rotation
+            dragging = true;
+            startX = e.pageX;
+            viewer.style.cursor = 'grabbing';
+        });
+
+        // mousemove to rotate image based on dragging direction
+        const sensitivity = 5;
+
+        viewer.addEventListener('mousemove', (e) => {
+            if (dragging) {
+                const moveX = e.pageX - startX;
+
+                // Adjust moveX by the sensitivity factor
+                if (Math.abs(moveX) > sensitivity) {
+                    startX = e.pageX;
+
+                    if (moveX < 0) { 
+                        // Move to the next image when dragging left
+                        currentImage = (currentImage + 1) % totalImages;
+                    } else if (moveX > 0) { 
+                        // Move to the previous image when dragging right
+                        currentImage = (currentImage - 1 + totalImages) % totalImages;
+                    }
+
+                    updateImage();
+                }
+            }
+        });
+
+        // mouseup to stop dragging rotation
+        document.addEventListener('mouseup', () => {
+            if (dragging) {
+                dragging = false;
+                viewer.style.cursor = 'grab';
+            }
+        });
+
+        // Prevent image drag
+        viewer.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+        });
+
+        // Optional: Change cursor style when mouse enters/leaves the viewer
+        viewer.addEventListener('mouseenter', () => {
+            viewer.style.cursor = 'grab';
+        });
+
+        viewer.addEventListener('mouseleave', () => {
+            viewer.style.cursor = 'default';
+            if (dragging) {
+                dragging = false;
+                document.body.style.cursor = 'default';
+            }
+        });
+
+        // update the image displayed
+        function updateImage() {
+            const allImages = viewer.querySelectorAll('img');
+            allImages.forEach((img, index) => {
+                img.style.display = index === currentImage ? 'block' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
